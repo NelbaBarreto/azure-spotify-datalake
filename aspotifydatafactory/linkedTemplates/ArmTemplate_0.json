@@ -529,12 +529,12 @@
 						"typeProperties": {
 							"method": "GET",
 							"headers": {
-								"functionKey": {
-									"value": "{\n  \"x-functions-key\": @{activity('getSpotifyProcessRawFunctionKey').output.value}\n}",
+								"x-functions-key": {
+									"value": "@activity('getSpotifyProcessRawFunctionKey').output.value",
 									"type": "Expression"
 								}
 							},
-							"url": "https://aspotifyfunctionapp.azurewebsites.net/api/processRawData?"
+							"url": "https://aspotifyfunctionapp.azurewebsites.net/api/processrawdata"
 						}
 					},
 					{
@@ -583,6 +583,44 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/spotifydatafetcher')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/dailyTrigger')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "spotifydailypipeline",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2024-09-14T16:17:00",
+						"timeZone": "Paraguay Standard Time",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								0
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/spotifydailypipeline')]"
 			]
 		}
 	]
