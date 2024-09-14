@@ -65,7 +65,22 @@
 						"referenceName": "spotifydatalakeraw",
 						"type": "DatasetReference",
 						"parameters": {
-							"filename": "@substring(     substring(         pipeline().parameters.endpointUrl,         add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1),         sub(             indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?'),             0         )     ),     0,     indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?')"
+							"filename": {
+								"value": "@substring(\n    pipeline().parameters.endpointUrl,\n    add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1),\n    sub(indexOf(pipeline().parameters.endpointUrl, '?'), add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1))\n)",
+								"type": "Expression"
+							},
+							"year": {
+								"value": "@pipeline().parameters.currentDate[0]",
+								"type": "Expression"
+							},
+							"month": {
+								"value": "@pipeline().parameters.currentDate[1]",
+								"type": "Expression"
+							},
+							"day": {
+								"value": "@pipeline().parameters.currentDate[2]",
+								"type": "Expression"
+							}
 						}
 					}
 				]
