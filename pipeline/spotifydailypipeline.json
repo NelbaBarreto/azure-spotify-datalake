@@ -256,8 +256,8 @@
 				"typeProperties": {
 					"method": "GET",
 					"headers": {
-						"functionKey": {
-							"value": "{\n  \"x-functions-key\": @{activity('getSpotifyProcessRawFunctionKey').output.value}\n}",
+						"x-functions-key": {
+							"value": "@activity('getSpotifyProcessRawFunctionKey').output.value",
 							"type": "Expression"
 						}
 					},
