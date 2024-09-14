@@ -163,7 +163,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "setSpotifyEndpoints",
+						"activity": "setCurrentDate",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -199,16 +199,47 @@
 									"accessToken": {
 										"value": "@activity('getAccessToken').output.access_token",
 										"type": "Expression"
+									},
+									"currentDate": {
+										"value": "@variables('currentDate')",
+										"type": "Expression"
 									}
 								}
 							}
 						}
 					]
 				}
+			},
+			{
+				"name": "setCurrentDate",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "setSpotifyEndpoints",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "currentDate",
+					"value": {
+						"value": "@createArray(\n            formatDateTime(utcNow(), 'yyyy'), \n            formatDateTime(utcNow(), 'MM'), \n            formatDateTime(utcNow(), 'dd')\n        )",
+						"type": "Expression"
+					}
+				}
 			}
 		],
 		"variables": {
 			"spotifyEndpoints": {
+				"type": "Array"
+			},
+			"currentDate": {
 				"type": "Array"
 			}
 		},

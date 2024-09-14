@@ -63,7 +63,13 @@
 				"outputs": [
 					{
 						"referenceName": "spotifydatalakeraw",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"year": "formatDateTime(utcNow(), 'yyyy')",
+							"month": "formatDateTime(utcNow(), 'MM')",
+							"day": "formatDateTime(utcNow(), 'dd')",
+							"filename": "@substring(     substring(         pipeline().parameters.endpointUrl,         add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1),         sub(             indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?'),             0         )     ),     0,     indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?')"
+						}
 					}
 				]
 			},
@@ -91,11 +97,17 @@
 			},
 			"accessToken": {
 				"type": "string"
+			},
+			"currentDate": {
+				"type": "string"
 			}
 		},
 		"variables": {
 			"endpoint": {
 				"type": "String"
+			},
+			"currentDate": {
+				"type": "Array"
 			}
 		},
 		"annotations": [],
