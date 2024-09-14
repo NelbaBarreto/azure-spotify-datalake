@@ -261,7 +261,7 @@
 							"type": "Expression"
 						}
 					},
-					"url": "https://aspotifyfunctionapp.azurewebsites.net/api/processRawData?"
+					"url": "https://aspotifyfunctionapp.azurewebsites.net/api/processrawdata"
 				}
 			},
 			{
