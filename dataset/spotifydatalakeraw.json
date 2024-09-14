@@ -7,20 +7,16 @@
 		},
 		"parameters": {
 			"filename": {
-				"type": "string",
-				"defaultValue": "@variables('filename')"
+				"type": "string"
 			},
 			"year": {
-				"type": "string",
-				"defaultValue": "@variables('currentDate')[0]"
+				"type": "string"
 			},
 			"month": {
-				"type": "string",
-				"defaultValue": "@variables('currentDate')[1]"
+				"type": "string"
 			},
 			"day": {
-				"type": "string",
-				"defaultValue": "@variables('currentDate')[2]"
+				"type": "string"
 			}
 		},
 		"annotations": [],
