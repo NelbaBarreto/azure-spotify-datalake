@@ -1,0 +1,9 @@
+{
+	"name": "aspotifydatafactory",
+	"location": "brazilsouth",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "5c9ca756-c8f0-4d67-8057-714b61a607d3",
+		"tenantId": "d0540a54-0294-40bd-a2ec-cc177ba03d75"
+	}
+}

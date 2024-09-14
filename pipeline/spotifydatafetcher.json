@@ -1,0 +1,105 @@
+{
+	"name": "spotifydatafetcher",
+	"properties": {
+		"activities": [
+			{
+				"name": "saveRawData",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "setEndpoint",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "RestSource",
+						"httpRequestTimeout": "00:01:40",
+						"requestInterval": "00.00:00:00.010",
+						"requestMethod": "GET",
+						"additionalHeaders": {
+							"Authorization": {
+								"value": "@concat('Bearer ', pipeline().parameters.accessToken)",
+								"type": "Expression"
+							}
+						},
+						"paginationRules": {
+							"supportRFC5988": "true"
+						}
+					},
+					"sink": {
+						"type": "JsonSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "JsonWriteSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "spotifyapiraw",
+						"type": "DatasetReference",
+						"parameters": {
+							"endpoint": {
+								"value": "@variables('endpoint')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "spotifydatalakeraw",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "setEndpoint",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "endpoint",
+					"value": {
+						"value": "@substring(\r\n    pipeline().parameters.endpointUrl,\r\n    length('https://api.spotify.com'),\r\n    sub(length(pipeline().parameters.endpointUrl), length('https://api.spotify.com'))\r\n)\r\n",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"endpointUrl": {
+				"type": "string"
+			},
+			"accessToken": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"endpoint": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-09-14T03:34:29Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

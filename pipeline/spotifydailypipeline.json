@@ -1,0 +1,219 @@
+{
+	"name": "spotifydailypipeline",
+	"properties": {
+		"activities": [
+			{
+				"name": "getRefreshToken",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifyrefreshtoken?api-version=7.3",
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "getSpotifyBase64Auth",
+				"type": "WebActivity",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "GET",
+					"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifybase64auth?api-version=7.3",
+					"authentication": {
+						"type": "MSI",
+						"resource": "https://vault.azure.net"
+					}
+				}
+			},
+			{
+				"name": "getAccessToken",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "getRefreshToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "getSpotifyBase64Auth",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"headers": {
+						"Content-Type": "application/x-www-form-urlencoded",
+						"Authorization": {
+							"value": "Basic @{activity('getSpotifyBase64Auth').output.value}",
+							"type": "Expression"
+						}
+					},
+					"url": "https://accounts.spotify.com/api/token",
+					"body": {
+						"value": "grant_type=refresh_token&refresh_token=@{activity('getRefreshToken').output.value}",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ifRefreshTokenExists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "getAccessToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(contains(string(activity('getAccessToken').output), 'refresh_token'), not(empty(activity('getAccessToken').output.refresh_token)))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "updateRefreshToken",
+							"type": "WebActivity",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "PUT",
+								"headers": {
+									"Content-Type": "application/json"
+								},
+								"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifyrefreshtoken?api-version=7.3",
+								"body": {
+									"value": "{\n  \"value\": @{activity('getAccessToken').output.refresh_token}\n}",
+									"type": "Expression"
+								},
+								"authentication": {
+									"type": "MSI",
+									"resource": "https://vault.azure.net"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "setSpotifyEndpoints",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "getAccessToken",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "spotifyEndpoints",
+					"value": [
+						"https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50&offset=0",
+						"https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=50&offset=0"
+					]
+				}
+			},
+			{
+				"name": "ForEachSpotifyEndpoint",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "setSpotifyEndpoints",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@variables('spotifyEndpoints')",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "executeSpotifyDataFetcher",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "spotifydatafetcher",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"endpointUrl": {
+										"value": "@item()",
+										"type": "Expression"
+									},
+									"accessToken": {
+										"value": "@activity('getAccessToken').output.access_token",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"spotifyEndpoints": {
+				"type": "Array"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-09-14T02:39:09Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

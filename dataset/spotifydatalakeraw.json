@@ -1,0 +1,45 @@
+{
+	"name": "spotifydatalakeraw",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "spotifydatalake",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"year": {
+				"type": "string",
+				"defaultValue": "formatDateTime(utcNow(), 'yyyy')"
+			},
+			"month": {
+				"type": "string",
+				"defaultValue": "formatDateTime(utcNow(), 'MM')"
+			},
+			"day": {
+				"type": "string",
+				"defaultValue": "formatDateTime(utcNow(), 'dd')"
+			},
+			"filename": {
+				"type": "string",
+				"defaultValue": "@substring(     substring(         pipeline().parameters.endpointUrl,         add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1),         sub(             indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?'),             0         )     ),     0,     indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?')"
+			}
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().filename",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@concat('spotify/', dataset().year, '/', dataset().month, '/', dataset().day)",
+					"type": "Expression"
+				},
+				"fileSystem": "raw"
+			}
+		},
+		"schema": {}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

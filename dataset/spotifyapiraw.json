@@ -1,0 +1,25 @@
+{
+	"name": "spotifyapiraw",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "spotifyapi",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"endpoint": {
+				"type": "string",
+				"defaultValue": "@substring( pipeline().parameters.endpointUrl, length('https://api.spotify.com'), sub(length(pipeline().parameters.endpointUrl), length('https://api.spotify.com')) )"
+			}
+		},
+		"annotations": [],
+		"type": "RestResource",
+		"typeProperties": {
+			"relativeUrl": {
+				"value": "@dataset().endpoint",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
