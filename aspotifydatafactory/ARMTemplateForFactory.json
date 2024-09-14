@@ -1,0 +1,530 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "aspotifydatafactory"
+		},
+		"spotifydatalake_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'spotifydatalake'"
+		},
+		"spotifyapi_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://api.spotify.com"
+		},
+		"spotifydatalake_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://aspotifydatalake.dfs.core.windows.net/"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/spotifydailypipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "getRefreshToken",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifyrefreshtoken?api-version=7.3",
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "getSpotifyBase64Auth",
+						"type": "WebActivity",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifybase64auth?api-version=7.3",
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "getAccessToken",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "getRefreshToken",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "getSpotifyBase64Auth",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "POST",
+							"headers": {
+								"Content-Type": "application/x-www-form-urlencoded",
+								"Authorization": {
+									"value": "Basic @{activity('getSpotifyBase64Auth').output.value}",
+									"type": "Expression"
+								}
+							},
+							"url": "https://accounts.spotify.com/api/token",
+							"body": {
+								"value": "grant_type=refresh_token&refresh_token=@{activity('getRefreshToken').output.value}",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ifRefreshTokenExists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "getAccessToken",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@and(contains(string(activity('getAccessToken').output), 'refresh_token'), not(empty(activity('getAccessToken').output.refresh_token)))",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "updateRefreshToken",
+									"type": "WebActivity",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"method": "PUT",
+										"headers": {
+											"Content-Type": "application/json"
+										},
+										"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifyrefreshtoken?api-version=7.3",
+										"body": {
+											"value": "{\n  \"value\": @{activity('getAccessToken').output.refresh_token}\n}",
+											"type": "Expression"
+										},
+										"authentication": {
+											"type": "MSI",
+											"resource": "https://vault.azure.net"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "setSpotifyEndpoints",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "getAccessToken",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "spotifyEndpoints",
+							"value": [
+								"https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50&offset=0",
+								"https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=50&offset=0"
+							]
+						}
+					},
+					{
+						"name": "ForEachSpotifyEndpoint",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "setCurrentDate",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('spotifyEndpoints')",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"activities": [
+								{
+									"name": "executeSpotifyDataFetcher",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "spotifydatafetcher",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"endpointUrl": {
+												"value": "@item()",
+												"type": "Expression"
+											},
+											"accessToken": {
+												"value": "@activity('getAccessToken').output.access_token",
+												"type": "Expression"
+											},
+											"currentDate": {
+												"value": "@variables('currentDate')",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "setCurrentDate",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "setSpotifyEndpoints",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "currentDate",
+							"value": {
+								"value": "@createArray(\n            formatDateTime(utcNow(), 'yyyy'), \n            formatDateTime(utcNow(), 'MM'), \n            formatDateTime(utcNow(), 'dd')\n        )",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"spotifyEndpoints": {
+						"type": "Array"
+					},
+					"currentDate": {
+						"type": "Array"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-09-14T02:39:09Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/spotifydatafetcher')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/spotifydatafetcher')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "saveRawData",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "setEndpoint",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"additionalHeaders": {
+									"Authorization": {
+										"value": "@concat('Bearer ', pipeline().parameters.accessToken)",
+										"type": "Expression"
+									}
+								},
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "spotifyapiraw",
+								"type": "DatasetReference",
+								"parameters": {
+									"endpoint": {
+										"value": "@variables('endpoint')",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "spotifydatalakeraw",
+								"type": "DatasetReference",
+								"parameters": {
+									"filename": {
+										"value": "@{substring(\n    pipeline().parameters.endpointUrl,\n    add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1),\n    sub(indexOf(pipeline().parameters.endpointUrl, '?'), add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1))\n)}.json",
+										"type": "Expression"
+									},
+									"year": {
+										"value": "Year=@{pipeline().parameters.currentDate[0]}",
+										"type": "Expression"
+									},
+									"month": {
+										"value": "Month=@{pipeline().parameters.currentDate[1]}",
+										"type": "Expression"
+									},
+									"day": {
+										"value": "Day=@{pipeline().parameters.currentDate[2]}",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "setEndpoint",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "endpoint",
+							"value": {
+								"value": "@substring(\r\n    pipeline().parameters.endpointUrl,\r\n    length('https://api.spotify.com'),\r\n    sub(length(pipeline().parameters.endpointUrl), length('https://api.spotify.com'))\r\n)\r\n",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"endpointUrl": {
+						"type": "string"
+					},
+					"accessToken": {
+						"type": "string"
+					},
+					"currentDate": {
+						"type": "array"
+					}
+				},
+				"variables": {
+					"endpoint": {
+						"type": "String"
+					},
+					"currentDate": {
+						"type": "Array"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2024-09-14T03:34:29Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/spotifyapiraw')]",
+				"[concat(variables('factoryId'), '/datasets/spotifydatalakeraw')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/spotifyapiraw')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "spotifyapi",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"endpoint": {
+						"type": "string",
+						"defaultValue": "@substring( pipeline().parameters.endpointUrl, length('https://api.spotify.com'), sub(length(pipeline().parameters.endpointUrl), length('https://api.spotify.com')) )"
+					}
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "@dataset().endpoint",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/spotifyapi')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/spotifydatalakeraw')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "spotifydatalake",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"filename": {
+						"type": "string"
+					},
+					"year": {
+						"type": "string"
+					},
+					"month": {
+						"type": "string"
+					},
+					"day": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat('spotify/', dataset().year, '/', dataset().month, '/', dataset().day)",
+							"type": "Expression"
+						},
+						"fileSystem": "raw"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/spotifydatalake')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/spotifyapi')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "RestService",
+				"typeProperties": {
+					"url": "[parameters('spotifyapi_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/spotifydatalake')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('spotifydatalake_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('spotifydatalake_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
