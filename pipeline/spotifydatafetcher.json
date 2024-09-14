@@ -66,19 +66,19 @@
 						"type": "DatasetReference",
 						"parameters": {
 							"filename": {
-								"value": "@substring(\n    pipeline().parameters.endpointUrl,\n    add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1),\n    sub(indexOf(pipeline().parameters.endpointUrl, '?'), add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1))\n)",
+								"value": "@{substring(\n    pipeline().parameters.endpointUrl,\n    add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1),\n    sub(indexOf(pipeline().parameters.endpointUrl, '?'), add(lastIndexOf(pipeline().parameters.endpointUrl, '/'), 1))\n)}.json",
 								"type": "Expression"
 							},
 							"year": {
-								"value": "@pipeline().parameters.currentDate[0]",
+								"value": "Year=@{pipeline().parameters.currentDate[0]}",
 								"type": "Expression"
 							},
 							"month": {
-								"value": "@pipeline().parameters.currentDate[1]",
+								"value": "Month=@{pipeline().parameters.currentDate[1]}",
 								"type": "Expression"
 							},
 							"day": {
-								"value": "@pipeline().parameters.currentDate[2]",
+								"value": "Day=@{pipeline().parameters.currentDate[2]}",
 								"type": "Expression"
 							}
 						}
