@@ -6,21 +6,9 @@
 			"type": "LinkedServiceReference"
 		},
 		"parameters": {
-			"year": {
-				"type": "string",
-				"defaultValue": "formatDateTime(utcNow(), 'yyyy')"
-			},
-			"month": {
-				"type": "string",
-				"defaultValue": "formatDateTime(utcNow(), 'MM')"
-			},
-			"day": {
-				"type": "string",
-				"defaultValue": "formatDateTime(utcNow(), 'dd')"
-			},
 			"filename": {
 				"type": "string",
-				"defaultValue": "@substring(     substring(         pipeline().parameters.endpointUrl,         add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1),         sub(             indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?'),             0         )     ),     0,     indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?')"
+				"defaultValue": "@substring(substring(         pipeline().parameters.endpointUrl,         add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1),         sub(             indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?'),             0         )     ),     0,     indexOf(substring(pipeline().parameters.endpointUrl, add(lastIndexOf(pipeline().parameters.endpointUrl, '/', lastIndexOf(pipeline().parameters.endpointUrl, '/')), 1)), '?')"
 			}
 		},
 		"annotations": [],
