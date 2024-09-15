@@ -319,7 +319,7 @@
 							"type": "Expression"
 						}
 					},
-					"url": "https://aspotifyfunctionapp.azurewebsites.net/api/curateProcessedData?code=gE2wqeECB0MulUyJ_SaAro_0j2GkHCXxeoUBj2WJ6MePAzFuhduDsg%3D%3D"
+					"url": "https://aspotifyfunctionapp.azurewebsites.net/api/curateProcessedData"
 				}
 			},
 			{
