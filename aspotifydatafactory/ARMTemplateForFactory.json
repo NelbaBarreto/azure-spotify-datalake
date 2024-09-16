@@ -291,7 +291,7 @@
 									"type": "Expression"
 								}
 							},
-							"url": "https://aspotifyfunctionapp.azurewebsites.net/api/processrawdata"
+							"url": "https://aspotifyfunctionapp.azurewebsites.net/api/processRawData"
 						}
 					},
 					{
@@ -317,6 +317,65 @@
 							"method": "GET",
 							"headers": {},
 							"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifyprocessrawfunctionkey?api-version=7.3",
+							"authentication": {
+								"type": "MSI",
+								"resource": "https://vault.azure.net"
+							}
+						}
+					},
+					{
+						"name": "curateProcessedData",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "getSpotifyCurateProcessedFunctionKey",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {
+								"x-functions-key": {
+									"value": "@activity('getSpotifyCurateProcessedFunctionKey').output.value",
+									"type": "Expression"
+								}
+							},
+							"url": "https://aspotifyfunctionapp.azurewebsites.net/api/curateProcessedData"
+						}
+					},
+					{
+						"name": "getSpotifyCurateProcessedFunctionKey",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "processRawData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"method": "GET",
+							"headers": {},
+							"url": "https://aspotifykeyvault.vault.azure.net/secrets/spotifycurateprocessedfunctionkey?api-version=7.3",
 							"authentication": {
 								"type": "MSI",
 								"resource": "https://vault.azure.net"
@@ -506,6 +565,51 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/spotifyapi')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/spotifydatalakecurated')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "spotifydatalake",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"filename": {
+						"type": "string"
+					},
+					"year": {
+						"type": "string"
+					},
+					"month": {
+						"type": "string"
+					},
+					"day": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat('spotify/', dataset().year, '/', dataset().month, '/', dataset().day)",
+							"type": "Expression"
+						},
+						"fileSystem": "raw"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/spotifydatalake')]"
 			]
 		},
 		{
